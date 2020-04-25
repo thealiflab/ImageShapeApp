@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io' as io;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'canvas_page.dart';
 
 //constants
 const buttonTextStyle = TextStyle(
@@ -81,7 +82,16 @@ class _ImagePageState extends State<ImagePage> {
                       bottom: 25.0,
                     ),
                     child: FloatingActionButton.extended(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CanvasPage(
+                              canvasImage: image,
+                            ),
+                          ),
+                        );
+                      },
                       label: Text(
                         'Insert Shapes to the Image',
                         style: buttonTextStyle,
