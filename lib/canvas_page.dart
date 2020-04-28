@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 //constants
 const buttonTextStyle = TextStyle(
@@ -44,16 +45,6 @@ class _CanvasPageState extends State<CanvasPage> {
     );
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.clear_all),
-          onPressed: () {
-            setState(
-              () {
-                _clear = true;
-                _points = [];
-              },
-            );
-          }),
       appBar: appBar,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -94,44 +85,51 @@ class _CanvasPageState extends State<CanvasPage> {
             ),
           ],
           if (_imageWidget != null) ...[
-            GestureDetector(
-              onPanStart: (DragStartDetails details) {
-                // get distance from points to check if is in circle
-                int indexMatch = -1;
-                for (int i = 0; i < _points.length; i++) {
-                  double distance = sqrt(
-                      pow(details.localPosition.dx - _points[i].dx, 2) +
-                          pow(details.localPosition.dy - _points[i].dy, 2));
-                  if (distance <= 30) {
-                    indexMatch = i;
-                    break;
+            FittedBox(
+              fit: BoxFit.fill,
+              child: GestureDetector(
+                onPanStart: (DragStartDetails details) {
+                  // get distance from points to check if is in circle
+                  int indexMatch = -1;
+                  for (int i = 0; i < _points.length; i++) {
+                    double distance = sqrt(
+                        pow(details.localPosition.dx - _points[i].dx, 2) +
+                            pow(details.localPosition.dy - _points[i].dy, 2));
+                    if (distance <= 30) {
+                      indexMatch = i;
+                      break;
+                    }
                   }
-                }
-                if (indexMatch != -1) {
-                  _currentlyDraggedIndex = indexMatch;
-                }
-              },
-              onPanUpdate: (DragUpdateDetails details) {
-                if (_currentlyDraggedIndex != -1) {
+                  if (indexMatch != -1) {
+                    _currentlyDraggedIndex = indexMatch;
+                  }
+                },
+                onPanUpdate: (DragUpdateDetails details) {
+                  if (_currentlyDraggedIndex != -1) {
+                    setState(() {
+                      _points = List.from(_points);
+                      _points[_currentlyDraggedIndex] = details.localPosition;
+                    });
+                  }
+                },
+                onPanEnd: (_) {
                   setState(() {
-                    _points = List.from(_points);
-                    _points[_currentlyDraggedIndex] = details.localPosition;
+                    _currentlyDraggedIndex = -1;
                   });
-                }
-              },
-              onPanEnd: (_) {
-                setState(() {
-                  _currentlyDraggedIndex = -1;
-                });
-              },
-              child: CustomPaint(
-                //size: Size.fromHeight(MediaQuery.of(context).size.height - appBar.preferredSize.height),
-                size: Size(
-                  _image.width.toDouble(),
-                  _image.height.toDouble(),
+                },
+                child: SizedBox(
+                  width: _image.width.toDouble(),
+                  height: _image.height.toDouble(),
+                  child: CustomPaint(
+                    //size: Size.fromHeight(MediaQuery.of(context).size.height - appBar.preferredSize.height),
+//                    size: Size(
+//                      _image.width.toDouble(),
+//                      _image.height.toDouble(),
+//                    ),
+                    painter: RectanglePainter(
+                        points: _points, clear: _clear, image: _image),
+                  ),
                 ),
-                painter: RectanglePainter(
-                    points: _points, clear: _clear, image: _image),
               ),
             )
           ]
@@ -142,22 +140,62 @@ class _CanvasPageState extends State<CanvasPage> {
 
   Future _pickImage(ImageSource imageSource) async {
     try {
-      File imageFile = await ImagePicker.pickImage(source: imageSource);
-      ui.Image finalImg = await _load(imageFile.path);
+      io.File imageFile = await ImagePicker.pickImage(source: imageSource);
+      print("Before Cropping");
+      print(" Image Size is : ${imageFile.lengthSync() / 1000} kB");
+
+      io.File croppedImage = await ImageCropper.cropImage(
+        sourcePath: imageFile.path,
+        aspectRatioPresets: io.Platform.isAndroid
+            ? [
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9
+              ]
+            : [
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio3x2,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio5x3,
+                CropAspectRatioPreset.ratio5x4,
+                CropAspectRatioPreset.ratio7x5,
+                CropAspectRatioPreset.ratio16x9
+              ],
+        androidUiSettings: AndroidUiSettings(
+            toolbarTitle: 'Image Edit',
+            toolbarColor: Colors.cyan,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false),
+        iosUiSettings: IOSUiSettings(
+          title: 'Edit',
+        ),
+      );
+
+      Future<ui.Image> _load(String asset) async {
+        ByteData data = await rootBundle.load(asset);
+        ui.Codec codec =
+            await ui.instantiateImageCodec(data.buffer.asUint8List());
+        ui.FrameInfo fi = await codec.getNextFrame();
+        return fi.image;
+      }
+
+      ui.Image finalImg = await _load(croppedImage.path);
       setState(() {
-        _imageWidget = Image.file(imageFile);
+        _imageWidget = Image.file(croppedImage);
         _image = finalImg;
+
+        print("After");
+        print(" Image Size is : ${imageFile.lengthSync() / 1000} kB");
+        print("Image height: ${_image.height}");
+        print("Image width: ${_image.width}");
       });
     } catch (e) {
       print(e);
     }
-  }
-
-  Future<ui.Image> _load(String asset) async {
-    ByteData data = await rootBundle.load(asset);
-    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-    ui.FrameInfo fi = await codec.getNextFrame();
-    return fi.image;
   }
 }
 
