@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:imageshapeapp/image_page.dart';
 import 'canvas_page.dart';
 
 void main() => runApp(MyApp());

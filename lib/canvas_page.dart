@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:zoom_widget/zoom_widget.dart';
+import 'rectangle_painter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 
@@ -30,6 +32,8 @@ class _CanvasPageState extends State<CanvasPage> {
   ];
   bool _clear = false;
   int _currentlyDraggedIndex = -1;
+
+  double x, y;
 
   @override
   Widget build(BuildContext context) {
@@ -85,49 +89,57 @@ class _CanvasPageState extends State<CanvasPage> {
             ),
           ],
           if (_imageWidget != null) ...[
-            FittedBox(
-              fit: BoxFit.fill,
-              child: GestureDetector(
-                onPanStart: (DragStartDetails details) {
-                  // get distance from points to check if is in circle
-                  int indexMatch = -1;
-                  for (int i = 0; i < _points.length; i++) {
-                    double distance = sqrt(
-                        pow(details.localPosition.dx - _points[i].dx, 2) +
+            Expanded(
+              child: Zoom(
+                width: _image.width.toDouble(),
+                height: _image.height.toDouble(),
+                backgroundColor: Colors.white,
+                colorScrollBars: Colors.cyan,
+                opacityScrollBars: 0.9,
+                scrollWeight: 10.0,
+                centerOnScale: true,
+                enableScroll: true,
+                child: FittedBox(
+                  fit: BoxFit.fill,
+                  child: GestureDetector(
+                    onPanStart: (DragStartDetails details) {
+                      // get distance from points to check if is in circle
+                      int indexMatch = -1;
+                      for (int i = 0; i < _points.length; i++) {
+                        double distance = sqrt(pow(
+                                details.localPosition.dx - _points[i].dx, 2) +
                             pow(details.localPosition.dy - _points[i].dy, 2));
-                    if (distance <= 30) {
-                      indexMatch = i;
-                      break;
-                    }
-                  }
-                  if (indexMatch != -1) {
-                    _currentlyDraggedIndex = indexMatch;
-                  }
-                },
-                onPanUpdate: (DragUpdateDetails details) {
-                  if (_currentlyDraggedIndex != -1) {
-                    setState(() {
-                      _points = List.from(_points);
-                      _points[_currentlyDraggedIndex] = details.localPosition;
-                    });
-                  }
-                },
-                onPanEnd: (_) {
-                  setState(() {
-                    _currentlyDraggedIndex = -1;
-                  });
-                },
-                child: SizedBox(
-                  width: _image.width.toDouble(),
-                  height: _image.height.toDouble(),
-                  child: CustomPaint(
-                    //size: Size.fromHeight(MediaQuery.of(context).size.height - appBar.preferredSize.height),
-//                    size: Size(
-//                      _image.width.toDouble(),
-//                      _image.height.toDouble(),
-//                    ),
-                    painter: RectanglePainter(
-                        points: _points, clear: _clear, image: _image),
+                        if (distance <= 30) {
+                          indexMatch = i;
+                          break;
+                        }
+                      }
+                      if (indexMatch != -1) {
+                        _currentlyDraggedIndex = indexMatch;
+                      }
+                    },
+                    onPanUpdate: (DragUpdateDetails details) {
+                      if (_currentlyDraggedIndex != -1) {
+                        setState(() {
+                          _points = List.from(_points);
+                          _points[_currentlyDraggedIndex] =
+                              details.localPosition;
+                        });
+                      }
+                    },
+                    onPanEnd: (_) {
+                      setState(() {
+                        _currentlyDraggedIndex = -1;
+                      });
+                    },
+                    child: SizedBox(
+                      width: _image.width.toDouble(),
+                      height: _image.height.toDouble(),
+                      child: CustomPaint(
+                        painter: RectanglePainter(
+                            points: _points, clear: _clear, image: _image),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -197,55 +209,4 @@ class _CanvasPageState extends State<CanvasPage> {
       print(e);
     }
   }
-}
-
-class RectanglePainter extends CustomPainter {
-  List<Offset> points;
-  bool clear;
-  final ui.Image image;
-
-  RectanglePainter(
-      {@required this.points, @required this.clear, @required this.image});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.red
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.fill
-      ..strokeWidth = 2;
-
-    final outputRect =
-        Rect.fromPoints(ui.Offset.zero, ui.Offset(size.width, size.height));
-    final Size imageSize =
-        Size(image.width.toDouble(), image.height.toDouble());
-    final FittedSizes sizes =
-        applyBoxFit(BoxFit.contain, imageSize, outputRect.size);
-    final Rect inputSubrect =
-        Alignment.center.inscribe(sizes.source, Offset.zero & imageSize);
-    final Rect outputSubrect =
-        Alignment.center.inscribe(sizes.destination, outputRect);
-    canvas.drawImageRect(image, inputSubrect, outputSubrect, paint);
-    if (!clear) {
-      final circlePaint = Paint()
-        ..color = Colors.red
-        ..strokeCap = StrokeCap.square
-        ..style = PaintingStyle.fill
-        ..blendMode = BlendMode.multiply
-        ..strokeWidth = 2;
-
-      for (int i = 0; i < points.length; i++) {
-        if (i + 1 == points.length) {
-          canvas.drawLine(points[i], points[0], paint);
-        } else {
-          canvas.drawLine(points[i], points[i + 1], paint);
-        }
-        canvas.drawCircle(points[i], 10, circlePaint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(RectanglePainter oldPainter) =>
-      oldPainter.points != points || clear;
 }
