@@ -27,7 +27,7 @@ class _CanvasPageState extends State<CanvasPage> {
   List<ui.Offset> _points = [
     ui.Offset(90, 120),
     ui.Offset(90, 370),
-    ui.Offset(320, 370),
+//    ui.Offset(320, 370),
     ui.Offset(320, 120)
   ];
   bool _clear = false;
@@ -187,7 +187,8 @@ class _CanvasPageState extends State<CanvasPage> {
         ),
       );
 
-      Future<ui.Image> _load(String asset) async {
+      Future<ui.Image> load(String asset) async {
+        if (asset == null || asset == "") return null;
         ByteData data = await rootBundle.load(asset);
         ui.Codec codec =
             await ui.instantiateImageCodec(data.buffer.asUint8List());
@@ -195,7 +196,7 @@ class _CanvasPageState extends State<CanvasPage> {
         return fi.image;
       }
 
-      ui.Image finalImg = await _load(croppedImage.path);
+      ui.Image finalImg = await load(croppedImage.path);
       setState(() {
         _imageWidget = Image.file(croppedImage);
         _image = finalImg;

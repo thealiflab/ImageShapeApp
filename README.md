@@ -1,16 +1,9 @@
-# imageshapeapp
+# ImageShapeApp
 
-Image shape dimension app
+This project is done for a client.
 
-## Getting Started
+Basically this app can insert an image and draw 4 square points.
+You can collect the data off those points and later work with them.
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![App Preview](https://github.com/thealiflab/ImageShapeApp/blob/master/imageshapeapp.gif "")
